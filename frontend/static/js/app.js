@@ -147,7 +147,7 @@ function addMessage(text, sender, sources = null) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Add loading message
+// Add loading message with dual-pass verification steps
 function addLoadingMessage() {
     const loadingId = `loading-${Date.now()}`;
     const messageDiv = document.createElement('div');
@@ -158,10 +158,20 @@ function addLoadingMessage() {
     contentDiv.className = 'message-content';
 
     const senderLabel = document.createElement('strong');
-    senderLabel.textContent = 'MPP Expert:';
+    senderLabel.textContent = 'MPP Expert (Dual-Pass AI Verification):';
+
+    const statusText = document.createElement('p');
+    statusText.style.cssText = 'margin: 10px 0; color: var(--accent);';
+    statusText.innerHTML = `
+        <strong>🤖 Verification in Progress...</strong><br><br>
+        Pass 1: Grok 4 analyzing with exact quotes...<br>
+        Pass 1: Gemini verifying accuracy and citations...<br>
+        Pass 2: Grok 4 reviewing Pass 1 results...<br>
+        Pass 2: Gemini final verification...
+    `;
 
     const loadingDiv = document.createElement('div');
-    loadingDiv.style.cssText = 'display: flex; gap: 5px; margin-top: 5px;';
+    loadingDiv.style.cssText = 'display: flex; gap: 5px; margin-top: 10px;';
     loadingDiv.innerHTML = `
         <span class="loading"></span>
         <span class="loading"></span>
@@ -169,6 +179,7 @@ function addLoadingMessage() {
     `;
 
     contentDiv.appendChild(senderLabel);
+    contentDiv.appendChild(statusText);
     contentDiv.appendChild(loadingDiv);
     messageDiv.appendChild(contentDiv);
     chatMessages.appendChild(messageDiv);

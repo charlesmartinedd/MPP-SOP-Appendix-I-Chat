@@ -40,10 +40,12 @@ async def health():
     """Health check endpoint"""
     try:
         doc_count = rag_service.get_document_count()
+        # Dual-AI system: Grok 4 + Gemini 2.5 Pro
+        model_info = "Grok 4 (xAI) + Gemini 2.5 Pro (Google) - Dual-Pass Verification"
         return HealthResponse(
             status="healthy",
             document_count=doc_count,
-            model=chat_service.model,
+            model=model_info,
             collection=rag_service.collection_name
         )
     except Exception as e:

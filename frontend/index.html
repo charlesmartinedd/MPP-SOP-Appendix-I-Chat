@@ -11,52 +11,68 @@
         <!-- Header -->
         <header class="header">
             <h1>MPP SOP & Appendix I Chat</h1>
-            <p class="subtitle">DoD Mentor-Protégé Program Expert Assistant powered by Grok 4</p>
+            <p class="subtitle">DoD Mentor-Protégé Program Expert Assistant</p>
+            <p class="subtitle-detail">Dual-Pass AI Verification: Each AI Verifies Twice | Grok 4 + Gemini 2.5 Pro | Español/English</p>
         </header>
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <div class="sidebar-section">
-                    <h2>Knowledge Base</h2>
-                    <div class="document-stats">
-                        <span id="doc-count">0</span> chunks loaded
-                    </div>
-
-                    <div class="knowledge-info">
-                        <h3>Loaded Documents:</h3>
-                        <ul>
-                            <li>✓ MPP Standard Operating Procedures</li>
-                            <li>✓ DFARS Appendix I</li>
-                            <li>✓ SOP for eLearning Products</li>
-                        </ul>
-                    </div>
-
-                    <div class="rag-toggle">
-                        <label class="toggle-label">
-                            <input type="checkbox" id="rag-toggle" checked />
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-text">Use Knowledge Base</span>
-                        </label>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Chat Area -->
-            <main class="chat-container">
+            <!-- Chat Area (Full Width) -->
+            <main class="chat-container-full">
                 <div class="chat-messages" id="chat-messages">
                     <div class="message bot-message">
                         <div class="message-content">
-                            <strong>MPP Expert:</strong>
-                            <p>Hello! I'm your DoD Mentor-Protégé Program assistant, powered by Grok 4. I have access to the MPP SOP, DFARS Appendix I, and eLearning SOP guidelines.
+                            <div class="welcome-header">
+                                <strong>MPP Expert (Dual-Pass AI Verification):</strong>
+                            </div>
 
-Ask me anything about the MPP program! You can also share text with me and I'll:
-• Verify accuracy against official MPP documents
-• Provide exact source citations (sections and paragraphs)
-• Rewrite it in eLearning SOP style if needed
+                            <p class="welcome-intro">¡Hola! / Hello! I'm your DoD Mentor-Protégé Program assistant with Dual-Pass AI Verification.</p>
 
-All Ms and Ps in Mentor and Protégé are always capitalized.</p>
+                            <div class="section">
+                                <strong>🤖 How I Work (Each AI Verifies TWICE):</strong>
+
+                                <div class="pass-section">
+                                    <p class="pass-title"><strong>Pass 1:</strong></p>
+                                    <ol class="pass-steps">
+                                        <li><strong>Grok 4</strong> analyzes your question with exact quotes</li>
+                                        <li><strong>Gemini 2.5 Pro</strong> verifies accuracy and citations</li>
+                                    </ol>
+                                </div>
+
+                                <div class="pass-section">
+                                    <p class="pass-title"><strong>Pass 2:</strong></p>
+                                    <ol class="pass-steps" start="3">
+                                        <li><strong>Grok 4</strong> reviews Pass 1 results</li>
+                                        <li><strong>Gemini 2.5 Pro</strong> provides final verified response</li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <div class="section">
+                                <strong>📚 Knowledge Base:</strong>
+                                <ul class="feature-list">
+                                    <li>MPP Standard Operating Procedures</li>
+                                    <li>DFARS Appendix I</li>
+                                    <li>SOP for eLearning Products</li>
+                                </ul>
+                            </div>
+
+                            <div class="section">
+                                <strong>🌐 Bilingual Responses:</strong>
+                                <p class="section-detail">All responses provided in <strong>Spanish first</strong>, then <strong>English</strong>.</p>
+                            </div>
+
+                            <div class="section">
+                                <strong>✅ Every Response Includes:</strong>
+                                <ul class="feature-list">
+                                    <li>Exact textual quotes from MPP SOP and DFARS</li>
+                                    <li>Page numbers AND section numbers (Page [X], Section [X.X.X])</li>
+                                    <li>Dual-pass verification (both AIs verify twice)</li>
+                                    <li>Bilingual format (Español → English)</li>
+                                </ul>
+                            </div>
+
+                            <p class="welcome-footer">All Ms and Ps in Mentor and Protégé are always capitalized.</p>
                         </div>
                     </div>
                 </div>
@@ -75,7 +91,7 @@ All Ms and Ps in Mentor and Protégé are always capitalized.</p>
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Powered by Grok 4 via OpenRouter & ChromaDB | Status: <span id="status">Checking...</span></p>
+            <p>Dual-Pass AI Verification: Grok 4 + Gemini 2.5 Pro | Each AI Verifies Twice | Status: <span id="status">Checking...</span></p>
         </footer>
     </div>
 

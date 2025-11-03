@@ -13,37 +13,61 @@ class ChatService:
     """Service for handling AI chat with Dual AI Verification
 
     Flow:
-    1. Grok 4 (xAI) generates response (Spanish → English)
-    2. Gemini verifies and synthesizes final answer (Spanish → English)
+    1. Grok 4 (xAI) generates response (Spanish -> English)
+    2. Gemini verifies and synthesizes final answer (Spanish -> English)
     """
 
     def __init__(self):
         # xAI Grok API client
         grok_key = os.getenv("GROK_API_KEY")
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        self.grok_client = None
+        self.grok_model = None
+        self.grok_provider = None
+
         if grok_key:
             self.grok_client = OpenAI(
                 api_key=grok_key,
-                base_url="https://api.x.ai/v1"
+                base_url=os.getenv("GROK_API_BASE", "https://api.x.ai/v1")
             )
             self.grok_model = os.getenv("GROK_MODEL", "grok-4-0709")
-            logger.info("✓ Grok 4 configured (xAI)")
+            self.grok_provider = "xai"
+            logger.info("Grok 4 configured via xAI endpoint")
+        elif openrouter_key:
+            openrouter_base = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+            default_headers = {}
+            site_url = os.getenv("OPENROUTER_SITE_URL")
+            app_name = os.getenv("OPENROUTER_APP_NAME", "MPP SOP & Appendix I Chat")
+            if site_url:
+                default_headers["HTTP-Referer"] = site_url
+            if app_name:
+                default_headers["X-Title"] = app_name
+
+            self.grok_client = OpenAI(
+                api_key=openrouter_key,
+                base_url=openrouter_base,
+                default_headers=default_headers or None,
+            )
+            self.grok_model = os.getenv("OPENROUTER_MODEL", "x-ai/grok-beta")
+            self.grok_provider = "openrouter"
+            logger.info("Grok 4 configured via OpenRouter")
         else:
-            self.grok_client = None
-            logger.warning("✗ GROK_API_KEY not set")
+            logger.warning("GROK_API_KEY or OPENROUTER_API_KEY not set; Grok 4 disabled")
 
         # Google Gemini API client
         gemini_key = os.getenv("GEMINI_API_KEY")
+        self.gemini_model = None
+        self.gemini_model_name = None
         if gemini_key:
             genai.configure(api_key=gemini_key)
-            self.gemini_model = genai.GenerativeModel(
-                os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
-            )
-            logger.info("✓ Gemini configured (Google)")
+            self.gemini_model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+            self.gemini_model = genai.GenerativeModel(self.gemini_model_name)
+            logger.info("Gemini configured (model: %s)", self.gemini_model_name)
         else:
-            self.gemini_model = None
-            logger.warning("✗ GEMINI_API_KEY not set")
+            logger.warning("GEMINI_API_KEY not set")
 
-        self.max_tokens = 2500
+        self.max_tokens = int(os.getenv("MAX_COMPLETION_TOKENS", "2500"))
+        self.temperature = float(os.getenv("COMPLETION_TEMPERATURE", "0.2"))
 
     def capitalize_mentor_protege(self, text: str) -> str:
         """Ensure Mentor and Protégé are always capitalized"""
@@ -78,14 +102,14 @@ class ChatService:
 **CAPACIDADES:**
 - Responder preguntas sobre MPP SOP, DFARS Appendix I y eLearning SOP
 - Analizar texto compartido por el usuario para verificar precisión
-- Sugerir correcciones SOLO si hay desinformación grave Y confianza ≥95%
+- Sugerir correcciones SOLO si hay desinformación grave Y confianza >=95%
 
 **SI EL USUARIO COMPARTE TEXTO PARA ANALIZAR:**
 1. Analiza el texto palabra por palabra contra la documentación
 2. Identifica cualquier inexactitud o error
 3. SOLO sugiere correcciones si:
    - Hay desinformación GRAVE (hechos incorrectos, requisitos falsos, etc.)
-   - Tu confianza es ≥95% basada en documentación exacta
+   - Tu confianza es >=95% basada en documentación exacta
 4. Para pequeñas diferencias de redacción (<95% confianza), menciona "El texto es generalmente correcto"
 
 **FORMATO DE RESPUESTA:**
@@ -103,7 +127,7 @@ class ChatService:
 - Estado: [Correcto / Necesita corrección]
 - Confianza: [Porcentaje]%
 - Problemas encontrados: [Lista de errores graves, si hay]
-- Correcciones sugeridas: [Solo si confianza ≥95% Y desinformación grave]
+- Correcciones sugeridas: [Solo si confianza >=95% Y desinformación grave]
 
 ---
 
@@ -120,7 +144,7 @@ class ChatService:
 - Status: [Correct / Needs correction]
 - Confidence: [Percentage]%
 - Issues found: [List of serious errors, if any]
-- Suggested corrections: [Only if confidence ≥95% AND serious misinformation]
+- Suggested corrections: [Only if confidence >=95% AND serious misinformation]
 
 **NUNCA ALUCINES - Solo usa la documentación proporcionada. Incluye CITAS TEXTUALES EXACTAS para respaldar cada afirmación.**"""
 
@@ -133,207 +157,164 @@ class ChatService:
 
         return system_message
 
-    def call_grok(self, user_message: str, context: Optional[List[Dict]] = None, verification_pass: int = 1, previous_response: str = None) -> str:
-        """Call Grok 4 via xAI API
 
-        Args:
-            user_message: User's question
-            context: Retrieved document chunks
-            verification_pass: 1 for initial, 2 for second verification
-            previous_response: Response from previous verification pass
-        """
-        if not self.grok_client:
-            return "Error: Grok 4 no configurado"
+    def call_grok(
+        self,
+        user_message: str,
+        context: Optional[List[Dict]] = None,
+        verification_pass: int = 1,
+        previous_response: Optional[str] = None,
+    ) -> str:
+        """Call Grok 4 to generate or refine a response."""
+        if not self.grok_client or not self.grok_model:
+            raise RuntimeError("Grok 4 client is not configured.")
 
         try:
             pass_label = "inicial" if verification_pass == 1 else "segunda"
-            logger.info(f"🤖 Calling Grok 4 (xAI) - Pase {verification_pass} ({pass_label})...")
+            provider = self.grok_provider or "unknown"
+            logger.info(
+                "Calling Grok 4 via %s (pass %s - %s)",
+                provider,
+                verification_pass,
+                pass_label,
+            )
 
             messages = [
-                {"role": "system", "content": self.get_bilingual_system_prompt(context, verification_pass)},
-                {"role": "user", "content": user_message}
+                {
+                    "role": "system",
+                    "content": self.get_bilingual_system_prompt(context, verification_pass),
+                },
+                {"role": "user", "content": user_message},
             ]
 
-            # For second pass, include previous verification results
             if verification_pass == 2 and previous_response:
-                messages.append({
-                    "role": "assistant",
-                    "content": f"**PASE 1 COMPLETADO:**\n{previous_response}\n\n**AHORA REALIZANDO PASE 2 DE VERIFICACIÓN...**"
-                })
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "**PASE 1 COMPLETADO (referencia interna):**\n"
+                            f"{previous_response}\n\n"
+                            "**Realiza el Pase 2 con verificación adicional.**"
+                        ),
+                    }
+                )
 
             response = self.grok_client.chat.completions.create(
                 model=self.grok_model,
                 messages=messages,
                 max_tokens=self.max_tokens,
-                temperature=0.2
+                temperature=self.temperature,
             )
-            result = response.choices[0].message.content
-            logger.info(f"✓ Grok 4 Pase {verification_pass} response received")
-            return result
-        except Exception as e:
-            logger.error(f"✗ Grok 4 Pase {verification_pass} error: {str(e)}")
-            return f"Error en Grok 4 Pase {verification_pass}: {str(e)}"
+            content_text = response.choices[0].message.content
+            if not content_text:
+                raise RuntimeError("Grok 4 returned an empty response.")
 
-    def call_gemini_verifier(self, user_message: str, grok_response: str, context: Optional[List[Dict]] = None, verification_pass: int = 1) -> str:
-        """Call Gemini to verify and enhance Grok's response
+            logger.info("Grok 4 pass %s response received", verification_pass)
+            return content_text
+        except Exception as exc:
+            raise RuntimeError(f"Grok 4 pass {verification_pass} error: {exc}") from exc
 
-        Args:
-            user_message: User's question
-            grok_response: Grok's response to verify
-            context: Retrieved document chunks
-            verification_pass: 1 for first verification, 2 for second verification
-        """
+
+    def call_gemini_verifier(
+        self,
+        user_message: str,
+        grok_response: str,
+        context: Optional[List[Dict]] = None,
+        verification_pass: int = 1,
+    ) -> str:
+        """Use Gemini to validate and refine the Grok response."""
         if not self.gemini_model:
-            return "Error: Gemini no configurado"
+            raise RuntimeError("Gemini verification model is not configured.")
 
-        try:
-            pass_label = "primera" if verification_pass == 1 else "segunda"
-            logger.info(f"🤖 Calling Gemini Verifier (Google) - Pase {verification_pass} ({pass_label})...")
+        context_block = self._build_context_section(context)
+        if context_block:
+            context_block = "\n" + context_block
 
-            verification_prompt = f"""Eres un verificador experto del Programa de Mentor-Protégé del DoD (MPP).
-**PASE DE VERIFICACIÓN GEMINI: {verification_pass} de 2 ({pass_label} verificación)**
+        verification_prompt = f"""Eres Gemini {self.gemini_model_name or '2.5 Pro'}. Revisa la respuesta producida por Grok 4 durante el pase {verification_pass}.
 
-Se te ha proporcionado una respuesta de Grok 4 a una pregunta del usuario. Tu trabajo es:
-1. Verificar la precisión de la respuesta contra la documentación
-2. Verificar que todas las citas sean EXACTAS y TEXTUALES
-3. Verificar que se incluyan PÁGINA Y SECCIÓN (Página [X], Sección [X.X.X], Párrafo [X])
-4. Si el usuario compartió texto para analizar, verificar el análisis de precisión de Grok 4
-5. Validar que las correcciones sugeridas cumplan: confianza ≥95% Y desinformación grave
-6. Mejorar la respuesta si es necesario
-7. Proporcionar la respuesta final PRIMERO en ESPAÑOL, luego en INGLÉS
-
-**PREGUNTA DEL USUARIO:**
+Pregunta del usuario:
 {user_message}
 
-**RESPUESTA DE GROK 4 (PASE {verification_pass}):**
+Respuesta de Grok 4:
 {grok_response}
 
-**DOCUMENTACIÓN DE REFERENCIA:**
-{chr(10).join([f"[{item['source']}] {item['text']}" for item in context]) if context else "No se proporcionó contexto"}
-
-**INSTRUCCIONES CRÍTICAS:**
-1. Analiza la respuesta de Grok 4 cuidadosamente
-2. Verifica contra la documentación palabra por palabra
-3. Asegúrate de que las citas sean TEXTUALES (no parafraseadas)
-4. Verifica que incluya Página Y Sección en cada cita
-5. Si hay análisis de texto compartido, confirma que:
-   - Las correcciones sugeridas son necesarias (desinformación grave)
-   - La confianza declarada es ≥95% con evidencia documental sólida
-   - Si confianza <95%, NO sugerir correcciones (solo mencionar "generalmente correcto")
-6. Proporciona una respuesta final mejorada y verificada
-7. Usa el formato con ESPAÑOL PRIMERO, luego INGLÉS
-8. SIEMPRE capitaliza "Mentor" y "Protégé"
-
-**FORMATO DE RESPUESTA FINAL:**
-
-**ESPAÑOL:**
-**Respuesta Verificada (Pase {verification_pass}):**
-[Tu respuesta verificada y mejorada en español]
-
-**Citas Textuales Verificadas:**
-> "[Cita exacta del documento]"
-- Fuente: [Nombre del Documento], Página [X], Sección [X.X.X] "[Título]", Párrafo [X]
-
-**[Si se analizó texto compartido]**
-**Análisis de Precisión Verificado:**
-- Estado: [Correcto / Necesita corrección]
-- Confianza: [Porcentaje]%
-- Problemas confirmados: [Solo errores graves verificados]
-- Correcciones finales: [Solo si ≥95% confianza Y grave]
-
----
-
-**ENGLISH:**
-**Verified Response (Pass {verification_pass}):**
-[Your verified and improved response in English]
-
-**Verified Exact Quotes:**
-> "[Exact quote from document]"
-- Source: [Document Name], Page [X], Section [X.X.X] "[Title]", Paragraph [X]
-
-**[If shared text was analyzed]**
-**Verified Accuracy Analysis:**
-- Status: [Correct / Needs correction]
-- Confidence: [Percentage]%
-- Confirmed issues: [Only verified serious errors]
-- Final corrections: [Only if ≥95% confidence AND serious]
-
-**VERIFICACIÓN GEMINI (PASE {verification_pass}):**
-- Precisión de Grok 4: [alta/media/baja]
-- Citas verificadas: [número de citas verificadas]
-- Páginas y secciones confirmadas: [Sí/No]
-- Análisis de texto validado: [Si aplica - confianza y correcciones apropiadas]
-- Mejoras realizadas: [cualquier observación importante]
+Instrucciones:
+1. Confirma citas, páginas y secciones. Corrige cualquier inconsistencia.
+2. Mantén el formato bilingüe (español primero, inglés después) con citas textuales exactas.
+3. Si se analizó texto del usuario, indica estado, confianza y sugiere correcciones solo con evidencia >=95%.
+4. Asegúrate de que "Mentor" y "Protégé" estén capitalizados.
+5. Si falta evidencia documental, decláralo explícitamente.
+{context_block}
+Devuelve la respuesta final verificada en ambos idiomas siguiendo el formato solicitado (español primero, inglés después).
 """
 
+        try:
             response = self.gemini_model.generate_content(verification_prompt)
-            result = response.text
-            logger.info(f"✓ Gemini Pase {verification_pass} verification complete")
-            return result
-        except Exception as e:
-            logger.error(f"✗ Gemini Pase {verification_pass} error: {str(e)}")
-            return f"Error en Gemini Pase {verification_pass}: {str(e)}"
+            text_output = getattr(response, "text", "")
+        except Exception as exc:
+            raise RuntimeError(f"Gemini pass {verification_pass} error: {exc}") from exc
+
+        if not text_output:
+            raise RuntimeError("Gemini returned an empty response.")
+
+        logger.info("Gemini pass %s verification complete", verification_pass)
+        return text_output
+
+    def _build_context_section(self, context: Optional[List[Dict]] = None) -> str:
+        """Build context section from retrieved documents"""
+        if not context or len(context) == 0:
+            return ""
+
+        context_text = "\n\n".join([
+            f"[{item['source']}]\n{item['text']}"
+            for item in context
+        ])
+        return f"**Contexto de Documentación:**\n{context_text}"
 
     def generate_response(self, user_message: str, context: Optional[List[Dict]] = None) -> str:
-        """Generate response using Dual-Pass Dual AI Verification
-
-        Flow:
-        PASS 1:
-        1. Grok 4 initial analysis with exact quotes
-        2. Gemini 2.5 Pro verification #1
-
-        PASS 2:
-        3. Grok 4 second analysis (reviewing Pass 1 results)
-        4. Gemini 2.5 Pro final verification #2
-
-        Both AIs verify TWICE before reaching final agreement.
-        """
-
-        if not self.grok_client and not self.gemini_model:
-            return "Error: No AI models configured. Please set API keys in .env file."
+        """Generate a response using Grok 4 and optional Gemini verification."""
+        if not self.grok_client:
+            return (
+                "Error: No generative model configured. Set GROK_API_KEY (xAI) or "
+                "OPENROUTER_API_KEY in the .env file."
+            )
 
         try:
             logger.info("=" * 80)
-            logger.info("DUAL-PASS DUAL AI VERIFICATION SYSTEM")
-            logger.info("Grok 4 + Gemini 2.5 Pro - Each AI Verifies TWICE")
+            logger.info("MPP Dual-Pass Pipeline")
+            logger.info("Provider: Grok 4 via %s", self.grok_provider or "unconfigured")
+            if self.gemini_model:
+                logger.info("Verifier: Gemini %s (dual pass)", self.gemini_model_name or "2.5 Pro")
+            else:
+                logger.info("Verifier: Gemini (disabled)")
             logger.info("=" * 80)
 
-            # ============================================================
-            # PASS 1: Initial Analysis and First Verification
-            # ============================================================
-            logger.info("\n" + "=" * 80)
-            logger.info("PASS 1: INITIAL ANALYSIS AND FIRST VERIFICATION")
-            logger.info("=" * 80)
-
-            # Step 1: Grok 4 initial analysis (Pass 1)
             grok_pass1 = self.call_grok(user_message, context, verification_pass=1)
 
-            # Step 2: Gemini first verification (Pass 1)
-            gemini_pass1 = self.call_gemini_verifier(user_message, grok_pass1, context, verification_pass=1)
+            if not self.gemini_model:
+                logger.info("Returning Grok-only response (Gemini not configured).")
+                return self.capitalize_mentor_protege(grok_pass1)
 
-            # ============================================================
-            # PASS 2: Second Analysis and Final Verification
-            # ============================================================
-            logger.info("\n" + "=" * 80)
-            logger.info("PASS 2: SECOND ANALYSIS AND FINAL VERIFICATION")
-            logger.info("=" * 80)
+            gemini_pass1 = self.call_gemini_verifier(
+                user_message, grok_pass1, context, verification_pass=1
+            )
+            grok_pass2 = self.call_grok(
+                user_message,
+                context,
+                verification_pass=2,
+                previous_response=gemini_pass1,
+            )
+            final_response = self.call_gemini_verifier(
+                user_message, grok_pass2, context, verification_pass=2
+            )
 
-            # Step 3: Grok 4 second analysis (Pass 2) - reviews Pass 1 results
-            grok_pass2 = self.call_grok(user_message, context, verification_pass=2, previous_response=gemini_pass1)
+            logger.info("Dual-pass verification complete.")
+            return self.capitalize_mentor_protege(final_response)
 
-            # Step 4: Gemini final verification (Pass 2)
-            final_response = self.call_gemini_verifier(user_message, grok_pass2, context, verification_pass=2)
+        except RuntimeError as exc:
+            logger.error("Verification pipeline failed: %s", exc)
+            return f"Error generating response: {exc}"
+        except Exception as exc:
+            logger.exception("Unexpected error in verification pipeline")
+            return f"Error generating response: {exc}"
 
-            logger.info("\n" + "=" * 80)
-            logger.info("✓ DUAL-PASS VERIFICATION COMPLETE")
-            logger.info("Both Grok 4 and Gemini 2.5 Pro have verified TWICE")
-            logger.info("=" * 80)
-
-            # Ensure capitalization
-            formatted_response = self.capitalize_mentor_protege(final_response)
-
-            return formatted_response
-
-        except Exception as e:
-            logger.error(f"Error in dual-pass verification: {str(e)}")
-            return f"Error generating response: {str(e)}"

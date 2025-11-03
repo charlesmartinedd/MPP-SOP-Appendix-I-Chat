@@ -14,14 +14,19 @@ document.addEventListener('DOMContentLoaded', () => {
     checkHealth();
     updateDocumentCount();
 
-    // Event listeners
-    sendBtn.addEventListener('click', sendMessage);
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendMessage);
+    }
+
+    if (userInput) {
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        userInput.focus();
+    }
 });
 
 // Check API health
@@ -29,6 +34,8 @@ async function checkHealth() {
     try {
         const response = await fetch(`${API_BASE}/health`);
         const data = await response.json();
+
+        if (!statusElement) return;
 
         if (data.status === 'healthy') {
             statusElement.textContent = 'Online';
@@ -39,8 +46,10 @@ async function checkHealth() {
         }
     } catch (error) {
         console.error('Health check failed:', error);
-        statusElement.textContent = 'Offline';
-        statusElement.className = 'error';
+        if (statusElement) {
+            statusElement.textContent = 'Offline';
+            statusElement.className = 'error';
+        }
     }
 }
 
@@ -49,14 +58,21 @@ async function updateDocumentCount() {
     try {
         const response = await fetch(`${API_BASE}/documents/count`);
         const data = await response.json();
-        docCount.textContent = data.count;
+        if (docCount) {
+            docCount.textContent = data.count ?? 0;
+        }
     } catch (error) {
         console.error('Failed to get document count:', error);
+        if (docCount) {
+            docCount.textContent = '0';
+        }
     }
 }
 
 // Send chat message
 async function sendMessage() {
+    if (!userInput) return;
+
     const message = userInput.value.trim();
 
     if (!message) return;
@@ -65,10 +81,14 @@ async function sendMessage() {
     addMessage(message, 'user');
 
     // Clear input
-    userInput.value = '';
+    if (userInput) {
+        userInput.value = '';
+    }
 
     // Disable send button
-    sendBtn.disabled = true;
+    if (sendBtn) {
+        sendBtn.disabled = true;
+    }
 
     // Show loading indicator
     const loadingId = addLoadingMessage();
@@ -81,25 +101,33 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 message: message,
-                use_rag: ragToggle.checked
+                use_rag: ragToggle ? ragToggle.checked : true
             })
         });
+
+        if (!response.ok) {
+            throw new Error(`Request failed: ${response.status}`);
+        }
 
         const data = await response.json();
 
         // Remove loading indicator
         removeLoadingMessage(loadingId);
 
-        // Add bot response
-        addMessage(data.response, 'bot', data.sources);
+        const reply = data?.response || 'No response returned.';
+        addMessage(reply, 'bot', data?.sources);
 
     } catch (error) {
         console.error('Error sending message:', error);
         removeLoadingMessage(loadingId);
         addMessage('Sorry, I encountered an error. Please try again.', 'bot');
     } finally {
-        sendBtn.disabled = false;
-        userInput.focus();
+        if (sendBtn) {
+            sendBtn.disabled = false;
+        }
+        if (userInput) {
+            userInput.focus();
+        }
     }
 }
 
@@ -133,7 +161,18 @@ function addMessage(text, sender, sources = null) {
         sources.forEach((source, index) => {
             const sourceItem = document.createElement('div');
             sourceItem.className = 'source-item';
-            sourceItem.textContent = `${index + 1}. ${source.source}`;
+            const sourceLabel = source?.source || 'Document';
+            const chunkLabel = source?.chunk !== undefined ? ` (chunk ${source.chunk})` : '';
+            sourceItem.textContent = `${index + 1}. ${sourceLabel}${chunkLabel}`;
+
+            if (source?.text) {
+                const snippet = document.createElement('span');
+                snippet.className = 'source-snippet';
+                const trimmed = source.text.trim();
+                snippet.textContent = trimmed.length > 160 ? `${trimmed.slice(0, 160)}...` : trimmed;
+                sourceItem.appendChild(snippet);
+            }
+
             sourcesDiv.appendChild(sourceItem);
         });
 
@@ -163,11 +202,11 @@ function addLoadingMessage() {
     const statusText = document.createElement('p');
     statusText.style.cssText = 'margin: 10px 0; color: var(--accent);';
     statusText.innerHTML = `
-        <strong>🤖 Verification in Progress...</strong><br><br>
-        Pass 1: Grok 4 analyzing with exact quotes...<br>
-        Pass 1: Gemini verifying accuracy and citations...<br>
-        Pass 2: Grok 4 reviewing Pass 1 results...<br>
-        Pass 2: Gemini final verification...
+        <strong>Verification in progress...</strong><br><br>
+        Pass 1: Grok 4 gathering citations.<br>
+        Pass 1: Gemini validating evidence.<br>
+        Pass 2: Grok 4 refining draft.<br>
+        Pass 2: Gemini confirming final response.
     `;
 
     const loadingDiv = document.createElement('div');

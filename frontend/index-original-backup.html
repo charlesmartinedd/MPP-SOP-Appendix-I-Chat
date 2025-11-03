@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPP SOP &amp; Appendix I Chat</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>MPP SOP &amp; Appendix I Chat</h1>
+            <p class="subtitle">DoD Mentor-Prot&eacute;g&eacute; Program Expert Assistant</p>
+            <p class="subtitle-detail">Dual-Pass AI Verification &mdash; Grok 4 + Gemini &mdash; Responses in Espa&ntilde;ol and English</p>
+        </header>
+
+        <div class="main-content">
+            <aside class="info-panel">
+                <section class="panel-section">
+                    <h2>Dual-Pass Workflow</h2>
+                    <ol>
+                        <li><strong>Pass 1:</strong> Grok 4 generates citations &amp; draft.</li>
+                        <li><strong>Pass 1:</strong> Gemini verifies accuracy and evidence.</li>
+                        <li><strong>Pass 2:</strong> Grok 4 reviews Gemini feedback.</li>
+                        <li><strong>Pass 2:</strong> Gemini confirms final bilingual response.</li>
+                    </ol>
+                </section>
+
+                <section class="panel-section knowledge-info">
+                    <h2>Knowledge Base</h2>
+                    <ul>
+                        <li>MPP Standard Operating Procedures</li>
+                        <li>DFARS Appendix I</li>
+                        <li>SOP for eLearning Products</li>
+                    </ul>
+                </section>
+
+                <section class="panel-section">
+                    <h2>Assurance Checklist</h2>
+                    <ul>
+                        <li>Exact quotations with page &amp; section references</li>
+                        <li>Accuracy analysis for user-provided text</li>
+                        <li>Mentor &amp; Prot&eacute;g&eacute; capitalized automatically</li>
+                        <li>Spanish first, English second in every reply</li>
+                    </ul>
+                </section>
+
+                <section class="panel-section">
+                    <h2>Controls</h2>
+                    <label class="toggle-label" for="rag-toggle">
+                        <input type="checkbox" id="rag-toggle" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-text">Knowledge Retrieval (RAG)</span>
+                    </label>
+                    <div class="stats">
+                        <div><strong>Document chunks:</strong> <span id="doc-count">0</span></div>
+                        <div><strong>Pipeline:</strong> Grok 4 + Gemini verification</div>
+                    </div>
+                </section>
+            </aside>
+
+            <main class="chat-container">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot-message">
+                        <div class="message-content">
+                            <div class="welcome-header"><strong>MPP Expert (Dual-Pass AI Verification)</strong></div>
+                            <p class="welcome-intro">&iexcl;Hola! / Hello! I verify every answer twice before you see it.</p>
+                            <p>Ask about eligibility, agreements, reporting, or paste draft text for accuracy review.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <textarea
+                        id="user-input"
+                        class="chat-input"
+                        placeholder="Ask about MPP policies or share text for verification..."
+                        rows="3"
+                    ></textarea>
+                    <button id="send-btn" class="btn btn-send btn-primary">Send</button>
+                </div>
+            </main>
+        </div>
+
+        <footer class="footer">
+            <p>Dual-Pass AI Verification &mdash; Status: <span id="status">Checking...</span></p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

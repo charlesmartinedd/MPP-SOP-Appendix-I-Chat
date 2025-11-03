@@ -24,7 +24,10 @@ Pre-loaded with 3 official documents:
 
 ### Prerequisites
 - Python 3.8+
-- OpenRouter API key (for Grok 4 access)
+- Either:
+  - `GROK_API_KEY` from xAI for direct Grok 4 access, **or**
+  - `OPENROUTER_API_KEY` for the OpenRouter relay
+- Optional: `GEMINI_API_KEY` to enable dual verification with Google Gemini
 
 ### Installation
 
@@ -41,7 +44,8 @@ Pre-loaded with 3 official documents:
 3. **Configure environment:**
    ```bash
    cp .env.example .env
-   # Edit .env and add your OPENROUTER_API_KEY
+   # Edit .env and add your GROK_API_KEY or OPENROUTER_API_KEY
+   # (Optional) Add GEMINI_API_KEY for dual verification
    ```
 
 4. **Initialize knowledge base (one-time):**

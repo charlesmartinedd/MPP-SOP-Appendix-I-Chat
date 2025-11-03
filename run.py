@@ -44,12 +44,16 @@ def check_initialization():
 
 if __name__ == "__main__":
     # Check environment
-    if not os.getenv("OPENROUTER_API_KEY"):
+    if not (os.getenv("GROK_API_KEY") or os.getenv("OPENROUTER_API_KEY")):
         logger.error("=" * 80)
-        logger.error("ERROR: OPENROUTER_API_KEY not found!")
+        logger.error("ERROR: No Grok credentials found!")
         logger.error("=" * 80)
-        logger.error("Please create a .env file with your OpenRouter API key:")
-        logger.error("  OPENROUTER_API_KEY=your-key-here")
+        logger.error("Set one of the following environment variables in .env:")
+        logger.error("  GROK_API_KEY=your-xai-key-here")
+        logger.error("  # or")
+        logger.error("  OPENROUTER_API_KEY=your-openrouter-key-here")
+        logger.error("=" * 80)
+        logger.error("Optional: set GEMINI_API_KEY to enable dual-pass verification.")
         logger.error("=" * 80)
         sys.exit(1)
 

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+.env
+
+# ChromaDB
+chroma_db/
+
+# Screenshots
+tests/screenshots/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# ngrok
+ngrok_url.json
+*.bat
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPP SOP & Appendix I Chat</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>MPP SOP & Appendix I Chat</h1>
+            <p class="subtitle">DoD Mentor-Protégé Program Expert Assistant powered by Grok 4</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h2>Knowledge Base</h2>
+                    <div class="document-stats">
+                        <span id="doc-count">0</span> chunks loaded
+                    </div>
+
+                    <div class="knowledge-info">
+                        <h3>Loaded Documents:</h3>
+                        <ul>
+                            <li>✓ MPP Standard Operating Procedures</li>
+                            <li>✓ DFARS Appendix I</li>
+                            <li>✓ SOP for eLearning Products</li>
+                        </ul>
+                    </div>
+
+                    <div class="rag-toggle">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="rag-toggle" checked />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-text">Use Knowledge Base</span>
+                        </label>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Chat Area -->
+            <main class="chat-container">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot-message">
+                        <div class="message-content">
+                            <strong>MPP Expert:</strong>
+                            <p>Hello! I'm your DoD Mentor-Protégé Program assistant, powered by Grok 4. I have access to the MPP SOP, DFARS Appendix I, and eLearning SOP guidelines.
+
+Ask me anything about the MPP program! You can also share text with me and I'll:
+• Verify accuracy against official MPP documents
+• Provide exact source citations (sections and paragraphs)
+• Rewrite it in eLearning SOP style if needed
+
+All Ms and Ps in Mentor and Protégé are always capitalized.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <textarea
+                        id="user-input"
+                        class="chat-input"
+                        placeholder="Ask about MPP eligibility, reporting, agreements, or share text for verification..."
+                        rows="3"
+                    ></textarea>
+                    <button id="send-btn" class="btn btn-send btn-primary">Send</button>
+                </div>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Powered by Grok 4 via OpenRouter & ChromaDB | Status: <span id="status">Checking...</span></p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

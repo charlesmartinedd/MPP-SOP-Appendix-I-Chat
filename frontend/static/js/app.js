@@ -131,6 +131,36 @@ async function sendMessage() {
     }
 }
 
+// Simple markdown parser
+function parseMarkdown(text) {
+    // Convert markdown to HTML
+    let html = text;
+
+    // Headers (## and ###)
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+
+    // Bold text (**text**)
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Bullet lists (- item or • item)
+    html = html.replace(/^[•\-]\s+(.+)$/gm, '<li>$1</li>');
+
+    // Wrap consecutive <li> in <ul>
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+    // Preserve line breaks
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = '<p>' + html + '</p>';
+
+    // Clean up empty paragraphs
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    html = html.replace(/<p>(<[uh][123l]>)/g, '$1');
+    html = html.replace(/(<\/[uh][123l]>)<\/p>/g, '$1');
+
+    return html;
+}
+
 // Add message to chat
 function addMessage(text, sender, sources = null) {
     const messageDiv = document.createElement('div');
@@ -142,8 +172,16 @@ function addMessage(text, sender, sources = null) {
     const senderLabel = document.createElement('strong');
     senderLabel.textContent = sender === 'user' ? 'You:' : 'MPP Expert:';
 
-    const messageText = document.createElement('p');
-    messageText.textContent = text;
+    const messageText = document.createElement('div');
+
+    // Parse markdown for bot messages, plain text for user
+    if (sender === 'bot') {
+        messageText.innerHTML = parseMarkdown(text);
+    } else {
+        const p = document.createElement('p');
+        p.textContent = text;
+        messageText.appendChild(p);
+    }
 
     contentDiv.appendChild(senderLabel);
     contentDiv.appendChild(messageText);
@@ -186,7 +224,7 @@ function addMessage(text, sender, sources = null) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-// Add loading message with dual-pass verification steps
+// Add loading message
 function addLoadingMessage() {
     const loadingId = `loading-${Date.now()}`;
     const messageDiv = document.createElement('div');
@@ -197,17 +235,11 @@ function addLoadingMessage() {
     contentDiv.className = 'message-content';
 
     const senderLabel = document.createElement('strong');
-    senderLabel.textContent = 'MPP Expert (Dual-Pass AI Verification):';
+    senderLabel.textContent = 'MPP Expert:';
 
     const statusText = document.createElement('p');
     statusText.style.cssText = 'margin: 10px 0; color: var(--accent);';
-    statusText.innerHTML = `
-        <strong>Verification in progress...</strong><br><br>
-        Pass 1: Grok 4 gathering citations.<br>
-        Pass 1: Gemini validating evidence.<br>
-        Pass 2: Grok 4 refining draft.<br>
-        Pass 2: Gemini confirming final response.
-    `;
+    statusText.textContent = 'Verifying accuracy';
 
     const loadingDiv = document.createElement('div');
     loadingDiv.style.cssText = 'display: flex; gap: 5px; margin-top: 10px;';
